@@ -28,24 +28,22 @@ function main(config) {
   config["unified-delay"] = true;
   config["global-client-fingerprint"] = "chrome";
 
-  // ===== 2. TUN 配置（关键：DNS 接管）=====
+  // ===== 2. TUN 配置（DNS 强制接管）=====
   config["tun"] = {
     enable: true,
-    stack: "system",                 // Windows / macOS 推荐
+    stack: "system",
     auto-route: true,
     auto-detect-interface: true,
-
-    // ★ 核心：DNS 劫持（解决 DNS Leak）
     dns-hijack: [
       "any:53",
       "tcp://any:53"
     ]
   };
 
-  // ===== 3. DNS 配置（系统代理 & TUN 通用）=====
+  // ===== 3. DNS（语义修正后的正确写法）=====
   config["dns"] = {
     enable: true,
-    listen: "127.0.0.1:1053",        // 本地监听，防误用
+    listen: "127.0.0.1:1053",
     ipv6: false,
 
     "enhanced-mode": "fake-ip",
@@ -54,77 +52,76 @@ function main(config) {
     "fake-ip-filter": [
       "+.lan",
       "+.local",
-      "+.direct",
+      "localhost.ptlogin2.qq.com",
       "+.msftconnecttest.com",
       "+.msftncsi.com",
-      "localhost.ptlogin2.qq.com",
       "*stun*"
     ],
 
-    // 系统兜底 DNS（仅启动阶段）
+    // ★ 添加启动兜底 DNS
     "default-nameserver": [
       "223.5.5.5",
       "119.29.29.29"
     ],
 
-    // 主 DNS（国内）
+    // 国内优先
     "nameserver": domesticNameservers,
 
-    // fallback → 国外
+    // 国外兜底
     "fallback": foreignNameservers,
 
     "fallback-filter": {
       geoip: true,
       "geoip-code": "CN",
       ipcidr: ["240.0.0.0/4"]
-    },
-
-    // DNS 分流策略
-    "nameserver-policy": {
-      "geosite:cn,private": domesticNameservers,
-      "geosite:google,youtube,telegram,openai,github": foreignNameservers
     }
-  };
+};
 
-  // ===== 4. 规则集 =====
+
+  // ===== 4. 规则集（补齐 AI / YouTube）=====
   const ruleProviders = {
-    "reject": {
+    reject: {
       ...ruleProviderCommon,
       url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/reject.txt",
       path: "./ruleset/reject.yaml"
     },
-    "icloud": {
+    icloud: {
       ...ruleProviderCommon,
       url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/icloud.txt",
       path: "./ruleset/icloud.yaml"
     },
-    "google": {
+    google: {
       ...ruleProviderCommon,
       url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/google.txt",
       path: "./ruleset/google.yaml"
     },
-    "proxy": {
+    openai: {
+      ...ruleProviderCommon,
+      url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/openai.txt",
+      path: "./ruleset/openai.yaml"
+    },
+    proxy: {
       ...ruleProviderCommon,
       url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/proxy.txt",
       path: "./ruleset/proxy.yaml"
     },
-    "direct": {
+    direct: {
       ...ruleProviderCommon,
       url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/direct.txt",
       path: "./ruleset/direct.yaml"
     },
-    "gfw": {
+    gfw: {
       ...ruleProviderCommon,
       url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/gfw.txt",
       path: "./ruleset/gfw.yaml"
     },
-    "telegramcidr": {
+    telegramcidr: {
       ...ruleProviderCommon,
       behavior: "ipcidr",
       url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/telegramcidr.txt",
       path: "./ruleset/telegramcidr.yaml"
     },
-    "cncidr": {
+    cncidr: {
       ...ruleProviderCommon,
       behavior: "ipcidr",
       url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/cncidr.txt",
@@ -164,7 +161,7 @@ function main(config) {
       ...groupBase,
       name: "Telegram",
       type: "select",
-      proxies: ["节点选择", "自动选择", "全局直连"]
+      proxies: ["节点选择", "自动选择", "DIRECT"]
     },
     {
       ...groupBase,
@@ -198,11 +195,25 @@ function main(config) {
     }
   ];
 
-  // ===== 6. 规则 =====
+  // ===== 6. 规则（顺序关键）=====
   config["rule-providers"] = ruleProviders;
   config["rules"] = [
     "RULE-SET,reject,广告过滤",
+
     "RULE-SET,telegramcidr,Telegram,no-resolve",
+    "RULE-SET,openai,AI",              // 如果规则集存在
+
+    // AI 服务（备用手动规则）
+    "DOMAIN-SUFFIX,openai.com,AI",
+    "DOMAIN-SUFFIX,claude.ai,AI",
+    "DOMAIN-SUFFIX,anthropic.com,AI",
+    "DOMAIN-KEYWORD,openai,AI",
+
+    // YouTube（备用手动规则）
+    "DOMAIN-SUFFIX,youtube.com,YouTube",
+    "DOMAIN-SUFFIX,googlevideo.com,YouTube",
+    "DOMAIN-SUFFIX,ytimg.com,YouTube",
+
     "RULE-SET,google,节点选择",
     "RULE-SET,icloud,DIRECT",
     "RULE-SET,proxy,节点选择",
