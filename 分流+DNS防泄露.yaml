@@ -320,7 +320,8 @@ proxy-groups:
   - name: "🇸🇬 新加坡节点 [系统]"
     type: url-test
     include-all-proxies: true
-    filter: '(?i)🇸🇬|新加坡|新国|\bSG\b|\bSGP\b|Singapore'
+    # 【修改参数】扩充了正则表达式，增加了“狮城”、“坡县”及常见连接符的宽容匹配
+    filter: '(?i)🇸🇬|新加坡|新国|狮城|坡县|\bSG\b|\bSGP\b|Singapore|-SG-|_SG_'
     exclude-filter: '(?i)官网|流量|剩余|到期|过期|套餐|订阅|重置|traffic|expire|expired|subscription|reset|official|website'
     exclude-type: "Direct"
     url: "https://cp.cloudflare.com/generate_204"
