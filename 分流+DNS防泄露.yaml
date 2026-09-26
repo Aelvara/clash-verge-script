@@ -134,6 +134,13 @@ rule-providers:
     interval: 86400
     url: "https://cdn.jsdelivr.net/gh/n0de-sudo/Perfect-Rules@main/Clash/rules/software.yaml"
 
+  steam_download:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 86400
+    url: "https://cdn.jsdelivr.net/gh/n0de-sudo/Perfect-Rules@main/Clash/rules/Steam_Download.yaml"  
+
 
 # ============================================================
 # Proxy Groups
@@ -385,6 +392,9 @@ proxy-groups:
 # ============================================================
 
 rules:
+
+  # 【新增】Steam 下载与内容服务器直连
+  - "RULE-SET,steam_download,DIRECT"
 
   # 软件进程优先
   - "RULE-SET,software,🖥️ 软件分流 [自选]"
